@@ -1,0 +1,35 @@
+{% load pandora_nav static %}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&amp;display=swap"><link rel="manifest" href="/manifest.webmanifest"><meta name="theme-color" content="#2d3250"><link rel="apple-touch-icon" href="{% static 'pandoraapp/apple-touch-icon.png' %}"><link rel="icon" href="{% static 'pandoraapp/icon-192.png' %}"><title>{% block title %}PANDORA · Sales and inventory{% endblock %}</title>
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js');
+(() => {
+  const root = document.documentElement;
+  const key = 'pandora-theme';
+  let preference;
+  try { preference = localStorage.getItem(key); } catch {}
+  function applyTheme() {
+    const dark = preference === 'dark';
+    root.dataset.theme = dark ? 'dark' : 'light';
+    const toggle = document.querySelector('.theme-toggle');
+    if (toggle) toggle.setAttribute('aria-pressed', String(dark));
+  }
+  applyTheme();
+  window.addEventListener('storage', event => {
+    if (event.key === key || event.key === null) {
+      preference = event.newValue;
+      applyTheme();
+    }
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    applyTheme();
+    document.querySelector('.theme-toggle')?.addEventListener('click', () => {
+      preference = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      try { localStorage.setItem(key, preference); } catch {}
+      applyTheme();
+    });
+  });
+})();
+</script>
+<style>{% include "pandoraapp/theme.css" %}{% include "pandoraapp/motion.css" %}</style></head>
+<body>{% include "pandoraapp/icon_defs.html" %}{% block body %}{% endblock %}<div class="toasts" aria-live="polite">{% for message in messages %}<div class="toast {{ message.tags }}">{{ message }}<button type="button" aria-label="Dismiss notification">×</button></div>{% endfor %}</div>
+<script>{% include "pandoraapp/motion.js" %}</script></body></html>

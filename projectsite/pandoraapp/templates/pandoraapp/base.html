@@ -1,0 +1,87 @@
+{% extends 'pandoraapp/document.html' %}
+{% load pandora_nav %}
+{% block body %}
+{% workspace_access user as rights %}
+<div class="frame">
+<aside id="rail">
+  <a class="brand" href="{% url 'pandoraapp:home' %}">{% include "pandoraapp/icon.html" with name="brand" only %} PANDORA</a>
+  <nav aria-label="Main navigation">
+    {% navigation rights as links %}{% for group,route,label,icon in links %}
+    {% ifchanged group %}<small>{{ group }}</small>{% endifchanged %}
+    <a href="{% url route %}" {% if request.resolver_match.view_name == route %}aria-current="page"{% endif %}>{% include "pandoraapp/icon.html" with name=icon only %}<span>{{ label }}</span></a>
+    {% endfor %}
+  </nav>
+  <div class="rail-foot">
+    {% if rights.admin_access %}<a href="{% url 'pandoraapp:settings' %}" title="Settings" aria-label="Settings">{% include "pandoraapp/icon.html" with name="settings" only %}</a>{% elif user.is_staff %}<a href="{% url 'admin:index' %}" title="Site administration" aria-label="Site administration">{% include "pandoraapp/icon.html" with name="settings" only %}</a>{% endif %}
+    <div class="rail-profile"><i>{{ user.username|first|upper }}</i><div><b>{{ user.username }}</b><small>Store workspace</small></div></div>
+  </div>
+</aside>
+<div class="rail-shade" aria-hidden="true"></div>
+<div class="workspace">
+  <header class="top">
+    <button id="toggle" aria-label="Toggle navigation" aria-controls="rail">{% include "pandoraapp/icon.html" with name="panel" only %}</button>
+    <b id="page">Dashboard</b>
+    {% include "pandoraapp/theme_toggle.html" %}
+    {% if user.is_authenticated %}<details class="account"><summary aria-label="Account for {{ user.username }}"><i>{{ user.username|first|upper }}</i><span>{{ user.username }}</span>{% include "pandoraapp/icon.html" with name="chevron" only %}</summary><form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Log out</button></form></details>{% endif %}
+    {% if rights.admin_access %}<a class="icon-button" href="{% url 'pandoraapp:settings' %}" title="Settings" aria-label="Settings">{% include "pandoraapp/icon.html" with name="settings" only %}</a>{% elif user.is_staff %}<a class="icon-button" href="{% url 'admin:index' %}" title="Site administration" aria-label="Site administration">{% include "pandoraapp/icon.html" with name="settings" only %}</a>{% endif %}
+  </header>
+  <div class="hero">
+    {% block hero %}{% endblock %}
+    <div class="hero-tools">
+      {% if rights.catalog_access %}<form class="global-search" action="{% url 'pandoraapp:products' %}">{% include "pandoraapp/icon.html" with name="search" only %}<input aria-label="Search products" name="q" type="search" placeholder="Search products or SKU…" maxlength="100"></form>{% endif %}
+      <div class="header-actions">
+        {% if rights.inventory_access %}<a class="icon-button" href="{% url 'pandoraapp:reorder' %}" title="Reorder report" aria-label="Reorder report">{% include "pandoraapp/icon.html" with name="bell" only %}</a>{% endif %}
+        {% if rights.purchase_create_access %}<a href="{% url 'pandoraapp:purchase_create' %}">{% include "pandoraapp/icon.html" with name="cart" only %}New purchase</a>{% endif %}
+        {% if rights.sale_create_access %}<a class="round-primary" href="{% url 'pandoraapp:sale_create' %}" title="New sale">{% include "pandoraapp/icon.html" with name="plus" only %}<span class="sr-only">New sale</span></a>{% endif %}
+      </div>
+    </div>
+  </div>
+  <main class="stage lit">{% block content %}{% endblock %}</main>
+</div>
+</div>
+<script>
+const toggle = document.querySelector('#toggle');
+const rail = document.querySelector('#rail');
+const mobile = matchMedia('(max-width: 800px)');
+// Desktop: the toggle widens the icon rail to show labels (remembered). Mobile: it opens the drawer.
+let wide = false;
+try { wide = localStorage.getItem('pandora-rail') === 'wide'; } catch {}
+function sidebar(open) {
+  document.body.classList.toggle('open', open);
+  document.body.classList.toggle('rail-wide', mobile.matches || wide);
+  rail.inert = !open;
+  toggle.setAttribute('aria-expanded', String(mobile.matches ? open : wide));
+}
+sidebar(!mobile.matches);
+mobile.addEventListener('change', () => sidebar(!mobile.matches));
+toggle.onclick = () => {
+  if (!mobile.matches) {
+    wide = !wide;
+    try { localStorage.setItem('pandora-rail', wide ? 'wide' : 'narrow'); } catch {}
+    sidebar(true);
+    return;
+  }
+  sidebar(rail.inert);
+  if (!rail.inert) rail.querySelector('.brand').focus();
+};
+function closeRail() { sidebar(false); toggle.focus(); }
+document.querySelector('.rail-shade').onclick = closeRail;
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && mobile.matches && !rail.inert) closeRail();
+});
+const current = rail.querySelector('[aria-current="page"]')?.textContent.trim();
+const title = document.querySelector('main h1')?.textContent || current;
+if (title) {
+  document.querySelector('#page').textContent = current || title;
+  document.title = title + ' · PANDORA';
+}
+document.querySelectorAll('main table').forEach(table => {
+  if (!table.parentElement.classList.contains('scroll')) {
+    const wrap = document.createElement('div');
+    wrap.className = 'scroll';
+    table.before(wrap);
+    wrap.append(table);
+  }
+});
+</script>
+{% endblock %}

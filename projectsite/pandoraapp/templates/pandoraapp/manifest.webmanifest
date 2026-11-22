@@ -1,0 +1,14 @@
+{% load static %}{
+  "name": "PANDORA · Sales and inventory",
+  "short_name": "Pandora",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#2d3250",
+  "theme_color": "#2d3250",
+  "icons": [
+    {"src": "{% static 'pandoraapp/icon-192.png' %}", "sizes": "192x192", "type": "image/png"},
+    {"src": "{% static 'pandoraapp/icon-512.png' %}", "sizes": "512x512", "type": "image/png"},
+    {"src": "{% static 'pandoraapp/icon-maskable.png' %}", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

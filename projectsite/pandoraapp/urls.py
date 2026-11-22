@@ -1,0 +1,52 @@
+from django.urls import path
+from . import views
+from . import business_views
+from . import catalog_views
+from . import supplier_views
+from . import settings_views
+from . import branch_views
+
+app_name = 'pandoraapp'
+urlpatterns = [path('', views.home, name='home'),
+               path('reports/products/', business_views.report, {'kind': 'performance'}, name='performance_report'),
+               path('reports/profit/', business_views.report, {'kind': 'profit'}, name='profit_report'),
+               path('reports/movements/', business_views.report, {'kind': 'movements'}, name='movement_report'),
+               path('expenses/', business_views.expenses, name='expenses'),
+               path('expenses/new/', business_views.expense_create, name='expense_create'),
+               path('expenses/categories/new/', business_views.expense_category, name='expense_category'),
+               path('expenses/<int:pk>/void/', business_views.expense_void, name='expense_void'),
+               path('reports/inventory/', views.inventory_report, name='inventory_report'),
+               path('reports/sales/', views.sales_report, name='sales_report'),
+               path('products/', views.products, name='products'),
+               path('inventory/reorder/', views.reorder, name='reorder'),
+               path('products/new/', catalog_views.product_edit, name='product_create'),
+               path('products/<int:pk>/edit/', catalog_views.product_edit, name='product_edit'),
+               path('products/<int:pk>/remove/', catalog_views.product_remove, name='product_remove'),
+               path('categories/', catalog_views.category_list, name='categories'),
+               path('categories/new/', catalog_views.category_edit, name='category_create'),
+               path('categories/<int:pk>/edit/', catalog_views.category_edit, name='category_edit'),
+               path('categories/<int:pk>/delete/', catalog_views.category_delete, name='category_delete'),
+               path('suppliers/', supplier_views.supplier_list, name='suppliers'),
+               path('suppliers/new/', supplier_views.supplier_edit, name='supplier_create'),
+               path('suppliers/<int:pk>/', supplier_views.supplier_detail, name='supplier_detail'),
+               path('suppliers/<int:pk>/edit/', supplier_views.supplier_edit, name='supplier_edit'),
+               path('branches/', branch_views.branch_list, name='branches'),
+               path('branches/new/', branch_views.branch_edit, name='branch_create'),
+               path('branches/<int:pk>/edit/', branch_views.branch_edit, name='branch_edit'),
+               path('warranty/', branch_views.warranty_list, name='warranty_claims'),
+               path('warranty/new/', branch_views.warranty_edit, name='warranty_create'),
+               path('warranty/<int:pk>/edit/', branch_views.warranty_edit, name='warranty_edit'),
+               path('map/', supplier_views.location_map, name='location_map'),
+               path('settings/', settings_views.settings_page, name='settings'),
+               path('settings/team/<int:pk>/role/', settings_views.team_role, name='team_role'),
+               path('settings/backup/', settings_views.backup_now, name='backup_now'),
+               path('settings/restore/', settings_views.restore, name='restore')]
+for kind, plural, action in [('purchase', 'purchases', 'receive'), ('sale', 'sales', 'complete')]:
+    urlpatterns += [
+        path(f'{plural}/<int:pk>/print/', business_views.transaction_pdf, {'kind': kind}, name=kind + '_pdf'),
+        path(f'{plural}/', views.history, {'kind': kind}, name=kind + '_history'),
+        path(f'{plural}/new/', views.create, {'kind': kind}, name=kind + '_create'),
+        path(f'{plural}/<int:pk>/', views.detail, {'kind': kind}, name=kind + '_detail'),
+        path(f'{plural}/<int:pk>/{action}/', views.post_transaction, {'kind': kind}, name=kind + '_post'),
+        path(f'{plural}/<int:pk>/cancel/', views.cancel, {'kind': kind}, name=kind + '_cancel'),
+    ]

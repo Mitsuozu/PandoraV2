@@ -1,0 +1,19 @@
+# Python caches
+__pycache__/
+*.py[cod]
+
+# Local secrets and environments
+.env
+# Database exports contain password hashes and store data
+*.sql
+*.dpapi
+.venv/
+
+# Local tooling output
+graphify-out/
+.claude/settings.local.json
+.claude/launch.json
+
+# Deployment
+db.sqlite3
+staticfiles/

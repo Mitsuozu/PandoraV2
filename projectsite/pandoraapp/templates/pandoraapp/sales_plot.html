@@ -1,0 +1,27 @@
+<section class="revenue-panel">
+  <div class="plot-heading">
+    <div><h2>Sales overview</h2><p>{% if start.year != today.year %}{{ start|date:"M j, Y" }}{% else %}{{ start|date:"M j" }}{% endif %} – {{ today|date:"M j, Y" }} · by {{ grain }}</p></div>
+    <span class="chart-key">Revenue · PHP</span>
+  </div>
+  <div class="plot-area">
+    <div class="scale" aria-hidden="true"><span>{% if revenue %}₱{{ scale_max|floatformat:"0g" }}{% endif %}</span><span>{% if revenue %}₱{{ scale_mid|floatformat:"0g" }}{% endif %}</span><span>₱0</span></div>
+    <div class="plot-data">
+      <div class="bar-chart">
+        <svg class="area" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="area-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--chart);stop-opacity:.35"/><stop offset="1" style="stop-color:var(--chart);stop-opacity:0"/></linearGradient></defs>
+          <path class="area-fill" d="{{ chart_area }}"/>
+          <path class="area-line" d="{{ chart_line }}"/>
+        </svg>
+        {% for first,last,value,height in chart %}
+        <div class="bar-slot">
+          <span class="bar" tabindex="0" style="--height:{{ height|stringformat:'s' }}%" aria-label="{{ first|date:'M j' }}{% if first != last %} to {{ last|date:'M j' }}{% endif %}{% if grain == 'month' %}, {{ last|date:'Y' }}{% endif %}, ₱{{ value|floatformat:'2g' }}">
+            <span class="bar-tip">{{ first|date:"M j" }}{% if first != last %}–{{ last|date:"M j" }}{% endif %}{% if grain == 'month' %} {{ last|date:"Y" }}{% endif %}<b>₱{{ value|floatformat:"2g" }}</b></span>
+          </span>
+        </div>
+        {% endfor %}
+        {% if not revenue %}<p class="chart-empty">No revenue in this period.</p>{% endif %}
+      </div>
+      <div class="axis" aria-hidden="true">{% for first,last,value,height in chart %}<span>{% if forloop.counter0|divisibleby:label_every %}{{ first|date:axis_format }}{% endif %}</span>{% endfor %}</div>
+    </div>
+  </div>
+</section>

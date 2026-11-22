@@ -1,0 +1,92 @@
+{% extends 'pandoraapp/base.html' %}{% block content %}
+<h1>New {{ kind }}</h1><form method="post" class="line-form">{% csrf_token %}
+<div class="line-header">{{ header.as_p }}</div>{{ lines.management_form }}{{ lines.non_form_errors }}
+<table class="line-table">
+  <thead><tr><th>Product</th><th>Qty</th><th class="{% if kind == 'sale' %}amount{% endif %}">{% if kind == 'purchase' %}Unit cost (₱){% else %}Unit price{% endif %}</th><th class="amount">Line total</th></tr></thead>
+  <tbody id="lines">{% for form in lines %}{% include 'pandoraapp/line_row.html' %}{% endfor %}</tbody>
+  <tfoot><tr><td colspan="3">Estimated total</td><td class="amount"><b id="grand-total" aria-live="polite">₱0.00</b></td></tr></tfoot>
+</table>
+<template id="empty-line">{% include 'pandoraapp/line_row.html' with form=lines.empty_form %}</template>
+<p class="line-note">{% if kind == 'sale' %}Final total, payment and change are confirmed on the next step.{% else %}Confirmed when the draft is saved.{% endif %}</p>
+<div class="line-actions"><button type="button" id="add-line">Add item</button><button>Save draft</button></div></form>
+<script>
+(() => {
+  const lines = document.getElementById('lines');
+  const count = document.getElementById('id_items-TOTAL_FORMS');
+  const add = document.getElementById('add-line');
+  const grand = document.getElementById('grand-total');
+  const money = n => '₱' + n.toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  function update() {
+    let total = 0;
+    for (const row of lines.querySelectorAll('tr')) {
+      const select = row.querySelector('select[name$="-product"]');
+      const qty = row.querySelector('input[name$="-quantity"]');
+      const cost = row.querySelector('input[name$="-unit_cost"]');
+      const info = row.querySelector('.line-info');
+      const priceCell = row.querySelector('.line-price');
+      const totalCell = row.querySelector('.line-total');
+      if (!select || !info) continue;
+      const option = select.selectedOptions[0];
+      info.classList.remove('warn');
+      if (!option || !option.value) {
+        info.textContent = '';
+        totalCell.textContent = '—';
+        if (priceCell) priceCell.textContent = '—';
+        continue;
+      }
+      const price = cost ? Number(cost.value || 0) : Number(option.dataset.price);
+      const quantity = Math.max(0, Number(qty && qty.value || 0));
+      const stock = Number(option.dataset.stock);
+      const line = price * quantity;
+      total += line;
+      if (priceCell) priceCell.textContent = money(price);
+      totalCell.textContent = money(line);
+      let text = stock + ' in stock';
+      if (!cost && quantity > stock) { text += ' · not enough stock'; info.classList.add('warn'); }
+      info.textContent = text;
+    }
+    grand.textContent = money(total);
+  }
+
+  function enhance(row) {
+    const select = row.querySelector('select[name$="-product"]');
+    if (!select || row.dataset.ready) return;
+    row.dataset.ready = '1';
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'line-search';
+    search.placeholder = 'Search by name, SKU or category';
+    search.setAttribute('aria-label', 'Search products');
+    select.parentElement.insertBefore(search, select);
+    search.addEventListener('input', () => {
+      const query = search.value.trim().toLowerCase();
+      let first = null;
+      for (const option of select.options) {
+        if (!option.value) continue;
+        const match = !query || (option.dataset.search || '').includes(query);
+        option.hidden = !match;
+        if (match && !first) first = option;
+      }
+      const current = select.selectedOptions[0];
+      if (query && first && (!current || !current.value || current.hidden)) select.value = first.value;
+      update();
+    });
+  }
+
+  lines.addEventListener('input', update);
+  lines.addEventListener('change', update);
+  add.addEventListener('click', () => {
+    const index = Number(count.value);
+    if (index >= 50) return;
+    lines.insertAdjacentHTML('beforeend', document.getElementById('empty-line').innerHTML.replaceAll('__prefix__', String(index)));
+    count.value = index + 1;
+    add.disabled = index + 1 >= 50;
+    enhance(lines.lastElementChild);
+    lines.lastElementChild.querySelector('.line-search')?.focus();
+  });
+  lines.querySelectorAll('tr').forEach(enhance);
+  update();
+})();
+</script>
+{% endblock %}

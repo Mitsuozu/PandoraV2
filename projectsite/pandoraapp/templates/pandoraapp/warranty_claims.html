@@ -1,0 +1,26 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<div class="page-head"><h1>Warranty claims</h1>{% if can_add %}<a class="button-link" href="{% url 'pandoraapp:warranty_create' %}">New claim</a>{% endif %}</div>
+<form method="get" class="list-filters">
+  <div class="filter-field"><label for="q">Search</label><input id="q" name="q" value="{{ q }}" maxlength="100" type="search" placeholder="Customer, product, SKU or serial"></div>
+  <div class="filter-field"><label for="status">Status</label>
+  <select name="status" id="status">
+    <option value="">All claims</option>
+    {% for value, label in statuses %}<option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select></div>
+  <button>Search</button>
+</form>
+<p class="product-result-count" role="status">{{ page.paginator.count }} claim{{ page.paginator.count|pluralize }} found</p>
+<table>
+  <thead><tr><th>Received</th><th>Customer</th><th>Product</th><th>Serial</th><th>Branch</th><th>Issue</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for claim in page %}
+    <tr><td>{% if can_edit %}<a href="{% url 'pandoraapp:warranty_edit' claim.pk %}">{{ claim.received_date }}</a>{% else %}{{ claim.received_date }}{% endif %}</td>
+      <td>{{ claim.customer.name }}</td><td>{{ claim.product.name }}</td><td>{{ claim.serial_number|default:"—" }}</td>
+      <td>{{ claim.branch.name|default:"—" }}</td><td>{{ claim.issue|truncatechars:60 }}</td>
+      <td><span class="{% if claim.status == 'released' %}stock-tag ok{% elif claim.status == 'rejected' %}stock-tag out-stock{% elif claim.status == 'in_repair' %}stock-tag warn{% else %}status{% endif %}">{{ claim.get_status_display }}</span></td></tr>
+  {% empty %}<tr><td colspan="7">No warranty claims match your search.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% include 'pandoraapp/pagination.html' %}
+{% endblock %}

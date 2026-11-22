@@ -1,0 +1,43 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<div class="page-head"><h1>Products</h1>{% if can_add %}<a class="button-link" href="{% url 'pandoraapp:product_create' %}">Add product</a>{% endif %}</div>
+<form method="get" class="list-filters product-filter">
+  <div class="filter-field product-search">{{ filter_form.q.label_tag }}{{ filter_form.q }}{{ filter_form.q.errors }}</div>
+  <button>Search</button>
+  <details class="more-filters"{% if active_filters or filter_form.errors %} open{% endif %}>
+    <summary>Filters{% if active_filters %} ({{ active_filters }}){% endif %}</summary>
+    <div class="filter-panel">
+      {% for field in filter_form %}{% if field.name != 'q' %}
+      <div class="filter-field">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>
+      {% endif %}{% endfor %}
+      {% if manage %}<div class="filter-field"><label for="show">Status</label>
+      <select name="show" id="show">
+        <option value="">Active products</option>
+        <option value="inactive" {% if show == 'inactive' %}selected{% endif %}>Inactive products</option>
+        <option value="all" {% if show == 'all' %}selected{% endif %}>All products</option>
+      </select></div>{% endif %}
+      <div class="product-filter-actions"><button>Apply filters</button>
+        <a href="{% url 'pandoraapp:products' %}">Reset</a></div>
+    </div>
+  </details>
+</form>
+<p class="product-result-count" role="status">{{ page.paginator.count }} product{{ page.paginator.count|pluralize }} found</p>
+<table>
+  <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th>Price</th><th>Available</th>{% if manage %}<th></th>{% endif %}</tr></thead>
+  <tbody>
+  {% for product in page %}
+    <tr><td>{{ product.sku }}</td><td>{{ product.name }}{% if not product.is_active %} <span class="status">Inactive</span>{% endif %}<br>{{ product.brand }}</td>
+      <td>{{ product.category__name }}</td><td>₱{{ product.selling_price }}</td>
+      <td>{% if product.current_stock == 0 %}<span class="stock-tag out-stock">Out of stock</span>{% else %}{{ product.current_stock }}{% endif %}</td>
+      {% if manage %}<td class="row-actions"><a href="{% url 'pandoraapp:product_edit' product.pk %}">Edit</a></td>{% endif %}</tr>
+  {% empty %}<tr><td colspan="{% if manage %}6{% else %}5{% endif %}">No products match your search.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% if page.has_other_pages %}
+<nav aria-label="Product pages">
+  {% if page.has_previous %}<a href="?{{ filter_query }}&amp;page={{ page.previous_page_number }}">Previous</a>{% endif %}
+  <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="?{{ filter_query }}&amp;page={{ page.next_page_number }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

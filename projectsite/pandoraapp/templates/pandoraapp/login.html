@@ -1,0 +1,25 @@
+{% extends 'pandoraapp/document.html' %}
+{% load socialaccount %}
+{% block title %}Sign in · PANDORA{% endblock %}
+{% block body %}
+<main class="signin">
+  <section class="lit">
+    <div class="signin-head"><div class="brand"><b aria-hidden="true">{% include "pandoraapp/icon.html" with name="brand" only %}</b> PANDORA</div>{% include "pandoraapp/theme_toggle.html" %}</div>
+    <h1>Sign in</h1>
+    <p>Welcome back to your store workspace.</p>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <input type="hidden" name="next" value="{{ next }}">
+      <button>Sign in</button>
+    </form>
+    {% get_providers as socialaccount_providers %}
+    {% for provider in socialaccount_providers %}
+    <form method="post" action="{% provider_login_url provider.id process='login' next=next %}">
+      {% csrf_token %}
+      <button>Sign in with {{ provider.name }}</button>
+    </form>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

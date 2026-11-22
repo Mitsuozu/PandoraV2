@@ -1,0 +1,27 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<div class="page-head"><h1>Branches</h1>{% if can_add %}<a class="button-link" href="{% url 'pandoraapp:branch_create' %}">Add branch</a>{% endif %}</div>
+<form method="get" class="list-filters">
+  <div class="filter-field"><label for="q">Search</label><input id="q" name="q" value="{{ q }}" maxlength="100" type="search" placeholder="Name, address or phone"></div>
+  <div class="filter-field"><label for="status">Status</label>
+  <select name="status" id="status">
+    <option value="">All branches</option>
+    <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+    <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+  </select></div>
+  <button>Search</button>
+</form>
+<p class="product-result-count" role="status">{{ page.paginator.count }} branch{{ page.paginator.count|pluralize:"es" }} found</p>
+<table>
+  <thead><tr><th>Branch</th><th>Address</th><th>Contact number</th><th>On map</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for branch in page %}
+    <tr><td>{% if can_edit %}<a href="{% url 'pandoraapp:branch_edit' branch.pk %}">{{ branch.name }}</a>{% else %}{{ branch.name }}{% endif %}</td>
+      <td>{{ branch.address|default:"—" }}</td><td>{{ branch.contact_number|default:"—" }}</td>
+      <td>{% if branch.latitude is not None %}Yes{% else %}—{% endif %}</td>
+      <td>{% if branch.is_active %}<span class="stock-tag ok">Active</span>{% else %}<span class="status">Inactive</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="5">No branches match your search.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% include 'pandoraapp/pagination.html' %}
+{% endblock %}

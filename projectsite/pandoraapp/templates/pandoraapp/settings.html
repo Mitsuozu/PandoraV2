@@ -1,0 +1,46 @@
+{% extends 'pandoraapp/base.html' %}
+{% block content %}
+<div class="page-head"><h1>Settings</h1>{% if user.is_staff %}<a class="button-link" href="{% url 'admin:index' %}">Open Django admin</a>{% endif %}</div>
+
+<h2>Team &amp; access</h2>
+<p>Authorize a new person. They sign in with the Google or GitHub account that uses this email. No password is needed.</p>
+<form method="post">{% csrf_token %}{{ form.as_p }}<button>Authorize</button></form>
+<table>
+  <thead><tr><th>Email / username</th><th>Status</th><th>Role</th></tr></thead>
+  <tbody>
+  {% for person, role, editable in rows %}
+    <tr><td>{{ person.email|default:person.username }}{% if person.email and person.email != person.username %}<br><small>{{ person.username }}</small>{% endif %}</td>
+      <td>{% if not person.is_active %}No access{% elif not person.last_login %}Hasn't signed in yet{% else %}Last sign-in {{ person.last_login|date:"M j, Y" }}{% endif %}</td>
+      <td>{% if editable %}
+        <form class="row-actions" method="post" action="{% url 'pandoraapp:team_role' person.pk %}">{% csrf_token %}
+          <select name="role" aria-label="Role for {{ person.email|default:person.username }}">{% for choice in roles %}<option{% if choice == role %} selected{% endif %}>{{ choice }}</option>{% endfor %}</select>
+          <button>Save</button>
+        </form>
+      {% else %}{{ role }}{% if person.pk == user.pk %} (you){% endif %}{% endif %}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="product-result-count">"No access" switches the account off but keeps its history. Superusers and emails of existing accounts are managed in Django admin.</p>
+
+<h2>Backups</h2>
+<p>The last 7 daily backups are kept in <code>{{ backup_directory }}</code>. Backing up again on the same day replaces that day's copy.</p>
+<form method="post" action="{% url 'pandoraapp:backup_now' %}">{% csrf_token %}<button>Back up now</button></form>
+<table>
+  <thead><tr><th>Backup</th><th>Saved</th><th class="amount">Size</th></tr></thead>
+  <tbody>
+  {% for backup in backups %}
+    <tr><td>{{ backup.name }}</td><td>{{ backup.saved|date:"M j, Y H:i" }}</td><td class="amount">{{ backup.kb|floatformat:0 }} KB</td></tr>
+  {% empty %}<tr><td colspan="3">No backups yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+
+{% if user.is_superuser and backups %}
+<h2>Restore a backup</h2>
+<p><strong>This replaces all current data with the backup.</strong> The current data is saved as a pre-restore backup first, so you can undo it by restoring that. Do it when nobody else is using Pandora. If the backup is from an older version of Pandora, run <code>manage.py migrate</code> afterwards.</p>
+<form method="post" action="{% url 'pandoraapp:restore' %}">{% csrf_token %}
+  <p><label for="restore-backup">Backup</label><select id="restore-backup" name="backup">{% for backup in backups %}<option>{{ backup.name }}</option>{% endfor %}</select></p>
+  <p><label for="restore-confirm">Type {{ restore_word }} to confirm</label><input id="restore-confirm" name="confirm" autocomplete="off" required></p>
+  <button>Restore</button>
+</form>
+{% endif %}
+{% endblock %}
