@@ -71,6 +71,11 @@ class Located(models.Model):
 
     class Meta:
         abstract = True
+        # NULL is allowed (no coordinates yet); written out so Django's own validation agrees with the database.
+        constraints = [
+            check('%(class)s_latitude_range', Q(latitude__isnull=True) | Q(latitude__gte=-90, latitude__lte=90)),
+            check('%(class)s_longitude_range', Q(longitude__isnull=True) | Q(longitude__gte=-180, longitude__lte=180)),
+        ]
 
 
 class Supplier(Located, BaseModel):
@@ -345,7 +350,7 @@ class Branch(Located, BaseModel):
     contact_number = models.CharField(max_length=50, blank=True)
     is_active = models.BooleanField(default=True)
 
-    class Meta:
+    class Meta(Located.Meta):  # keep the coordinate CHECKs from Located
         verbose_name_plural = 'branches'
 
     def __str__(self):
