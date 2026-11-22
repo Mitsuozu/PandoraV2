@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pandora">
+  <rect width="512" height="512" rx="112" fill="#2d3250"/>
+  <!-- open lid, hinged at the box's back-left corner -->
+  <rect x="132" y="262" width="214" height="30" rx="12" fill="#e8833a" transform="rotate(-58 140 292)"/>
+  <!-- box body -->
+  <path d="M136 292h240v104a24 24 0 0 1-24 24H160a24 24 0 0 1-24-24z" fill="#f9b17a"/>
+  <rect x="136" y="292" width="240" height="28" fill="#e8833a"/>
+  <path d="M256 320v100" stroke="#2d3250" stroke-width="10" opacity=".25"/>
+  <!-- sparkle escaping the box (same shape as the app's brand icon) -->
+  <path transform="translate(208 100) scale(7)" fill="#fbc395" d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z"/>
+  <path transform="translate(330 84) scale(2.4)" fill="#f9b17a" d="M12 2c.6 5.4 4.6 9.4 10 10-5.4.6-9.4 4.6-10 10-.6-5.4-4.6-9.4-10-10 5.4-.6 9.4-4.6 10-10z"/>
+</svg>
