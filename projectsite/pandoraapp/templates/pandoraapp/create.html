@@ -1,6 +1,9 @@
 {% extends 'pandoraapp/base.html' %}{% block content %}
 <h1>New {{ kind }}</h1><form method="post" class="line-form">{% csrf_token %}
-<div class="line-header">{{ header.as_p }}</div>{{ lines.management_form }}{{ lines.non_form_errors }}
+<div class="line-header">{{ header.as_p }}</div>
+{% if restock %}<div class="restock" aria-label="Products to restock"><span>Needs restocking — tap to add:</span>
+{% for item in restock %}<button type="button" class="stock-tag {% if item.current_stock == 0 %}out-stock{% else %}warn{% endif %}" data-product="{{ item.pk }}" data-qty="{% widthratio item.reorder_level 1 2 %}" data-stock="{{ item.current_stock }}">{{ item.name }} · {% if item.current_stock == 0 %}out of stock{% else %}{{ item.current_stock }} left{% endif %}</button>
+{% endfor %}</div>{% endif %}{{ lines.management_form }}{{ lines.non_form_errors }}
 <table class="line-table">
   <thead><tr><th>Product</th><th>Qty</th><th class="{% if kind == 'sale' %}amount{% endif %}">{% if kind == 'purchase' %}Unit cost (₱){% else %}Unit price{% endif %}</th><th class="amount">Line total</th></tr></thead>
   <tbody id="lines">{% for form in lines %}{% include 'pandoraapp/line_row.html' %}{% endfor %}</tbody>
@@ -38,12 +41,19 @@
       const price = cost ? Number(cost.value || 0) : Number(option.dataset.price);
       const quantity = Math.max(0, Number(qty && qty.value || 0));
       const stock = Number(option.dataset.stock);
+      const reorder = Number(option.dataset.reorder);
       const line = price * quantity;
       total += line;
       if (priceCell) priceCell.textContent = money(price);
       totalCell.textContent = money(line);
       let text = stock + ' in stock';
-      if (!cost && quantity > stock) { text += ' · not enough stock'; info.classList.add('warn'); }
+      if (cost) {
+        // Purchases: show why this item may need restocking and what it usually costs.
+        text += ' · reorder at ' + reorder;
+        if (stock === 0) { text += ' · Out of stock'; info.classList.add('warn'); }
+        else if (stock <= reorder) { text += ' · Low stock'; info.classList.add('warn'); }
+        if (option.dataset.cost) text += ' · avg. cost ' + money(Number(option.dataset.cost));
+      } else if (quantity > stock) { text += ' · not enough stock'; info.classList.add('warn'); }
       info.textContent = text;
     }
     grand.textContent = money(total);
@@ -56,23 +66,54 @@
     const search = document.createElement('input');
     search.type = 'search';
     search.className = 'line-search';
-    search.placeholder = 'Search by name, SKU or category';
+    search.placeholder = 'Search by name, SKU, brand or category';
     search.setAttribute('aria-label', 'Search products');
     select.parentElement.insertBefore(search, select);
+    const all = [...select.options];
+    const count = document.createElement('small');
+    count.className = 'line-count';
+    count.setAttribute('aria-live', 'polite');
+    search.after(count);
     search.addEventListener('input', () => {
-      const query = search.value.trim().toLowerCase();
-      let first = null;
-      for (const option of select.options) {
-        if (!option.value) continue;
-        const match = !query || (option.dataset.search || '').includes(query);
-        option.hidden = !match;
-        if (match && !first) first = option;
-      }
-      const current = select.selectedOptions[0];
-      if (query && first && (!current || !current.value || current.hidden)) select.value = first.value;
-      update();
+      const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+      const current = select.value;
+      const matches = all.filter(option => !option.value || words.every(word => (option.dataset.search || '').includes(word)));
+      select.replaceChildren(...matches);
+      const products = matches.filter(option => option.value);
+      if (matches.some(option => option.value === current)) select.value = current;
+      else if (words.length && products.length) select.value = products[0].value;
+      else select.value = '';
+      select.dispatchEvent(new Event('change', {bubbles: true}));
+      count.textContent = words.length ? (products.length ? products.length + ' match' + (products.length === 1 ? '' : 'es') : 'No products match') : '';
     });
   }
+
+  // Purchases: fill the unit cost from the product's average cost until the user types their own.
+  lines.addEventListener('change', event => {
+    const select = event.target.closest('select[name$="-product"]');
+    const cost = select && select.closest('tr').querySelector('input[name$="-unit_cost"]');
+    const option = select && select.selectedOptions[0];
+    if (!cost || !option || !option.dataset.cost) return;
+    if (!cost.value || cost.dataset.auto) { cost.value = option.dataset.cost; cost.dataset.auto = '1'; }
+  });
+  lines.addEventListener('input', event => {
+    if (event.target.matches('input[name$="-unit_cost"]')) delete event.target.dataset.auto;
+  });
+
+  document.querySelectorAll('.restock button').forEach(chip => chip.addEventListener('click', () => {
+    let row = [...lines.querySelectorAll('tr')].find(tr => !tr.querySelector('select[name$="-product"]').value);
+    if (!row) { add.click(); row = lines.lastElementChild; }
+    const select = row.querySelector('select[name$="-product"]');
+    const search = row.querySelector('.line-search');
+    if (search && search.value) { search.value = ''; search.dispatchEvent(new Event('input', {bubbles: true})); }
+    select.value = chip.dataset.product;
+    select.dispatchEvent(new Event('change', {bubbles: true}));
+    const qty = row.querySelector('input[name$="-quantity"]');
+    // Suggest topping stock up to twice the reorder level.
+    if (!qty.value) qty.value = Math.max(Number(chip.dataset.qty) - Number(chip.dataset.stock), 1);
+    update();
+    qty.focus();
+  }));
 
   lines.addEventListener('input', update);
   lines.addEventListener('change', update);

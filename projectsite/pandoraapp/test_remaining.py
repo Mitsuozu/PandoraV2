@@ -31,8 +31,9 @@ class RemainingFeaturesTests(Fixtures, TestCase):
         zero = Product.objects.create(category=self.category, sku='ZERO', name='Zero sales', brand='Test', model='Test', selling_price=1)
         result = performance(actor=self.admin, start=TODAY, end=TODAY)
         rows = {row[0]: row for row in result['rows']}
-        self.assertEqual(rows[self.product.sku][2:], [10, 'Fast-selling'])
-        self.assertEqual(rows[zero.sku][2:], [0, 'Slow-selling'])
+        self.assertEqual(rows[self.product.sku][2::3], [10, 'Fast-selling'])
+        self.assertEqual(rows[zero.sku][2::3], [0, 'Slow-selling'])
+        self.assertEqual(result['rows'][0][0], self.product.sku)  # best seller first
         self.product.is_active = False
         self.product.save(update_fields=['is_active'])
         self.assertEqual(len(performance(actor=self.admin, start=TODAY, end=TODAY)['rows']), 2)

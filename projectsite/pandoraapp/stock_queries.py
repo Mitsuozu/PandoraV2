@@ -14,4 +14,4 @@ def reorder_report(*, actor):
     """Protected report for Admin/Inventory Staff; no financial fields returned."""
     _authorize(actor, PURCHASE_ROLES, 'view_product')
     return list(products_needing_reorder().values('id', 'sku', 'name', 'current_stock',
-        'reorder_level', 'preferred_supplier__name'))
+        'reorder_level', 'preferred_supplier_id', 'preferred_supplier__name'))

@@ -17,6 +17,17 @@ class PeriodForm(SalesReportForm):
                                       empty_label='All categories')
 
 
+# sort key -> (label, ordering)
+MOVEMENT_ORDER = {'oldest': ('Oldest first', ('created_at', 'pk')), 'newest': ('Newest first', ('-created_at', '-pk')),
+                  'product': ('Product name', ('product__name', 'created_at', 'pk')),
+                  'type': ('Movement type', ('movement_type', 'created_at', 'pk'))}
+
+
+class MovementForm(PeriodForm):
+    sort = forms.ChoiceField(label='Sort by', required=False,
+                             choices=[(key, label) for key, (label, _) in MOVEMENT_ORDER.items()])
+
+
 class PerformanceForm(PeriodForm):
     fast = forms.IntegerField(label='Fast-selling minimum units', min_value=1, max_value=2147483647)
     slow = forms.IntegerField(label='Slow-selling maximum units', min_value=0, max_value=2147483646)
@@ -42,25 +53,33 @@ def performance(*, actor, start, end, category=None, fast=10, slow=2):
     if category:
         products = products.filter(category=category)
     rows = {}
-    for product in products.order_by('name', 'pk').values('pk', 'sku', 'name'):
-        rows[product['pk']] = {'sku': product['sku'], 'name': product['name'], 'units': 0}
+    for product in products.order_by('name', 'pk').values('pk', 'sku', 'name', 'current_stock'):
+        rows[product['pk']] = {**product, 'units': 0, 'revenue': Decimal('0.00')}
     items = SaleItem.objects.filter(sale__status='completed', sale__sale_date__range=(start, end))
     if category:
         items = items.filter(product__category=category)
-    for item in items.values('product_id', 'quantity'):
+    for item in items.values('product_id', 'quantity', 'unit_price'):
         rows[item['product_id']]['units'] += item['quantity']
+        rows[item['product_id']]['revenue'] += item['quantity'] * item['unit_price']
     result = []
-    for row in rows.values():
+    counts = {'Fast-selling': 0, 'Normal': 0, 'Slow-selling': 0}
+    # Best sellers first; ties keep alphabetical order.
+    for row in sorted(rows.values(), key=lambda row: -row['units']):
         label = 'Normal'
         if row['units'] >= fast:
             label = 'Fast-selling'
         elif row['units'] <= slow:
             label = 'Slow-selling'
-        result.append([row['sku'], row['name'], row['units'], label])
-    return {'title': 'Fast/slow-selling products', 'headings': ['SKU', 'Product', 'Units sold', 'Classification'],
-            'rows': result, 'widths': [100, 350, 100, 170],
+        counts[label] += 1
+        result.append([row['sku'], row['name'], row['units'], f"{row['revenue']:,.2f}", row['current_stock'], label])
+    summary = [('Fast-selling products', counts['Fast-selling'], 'count', f'Sold {fast} or more units — keep these in stock'),
+               ('Normal products', counts['Normal'], 'count', f'Sold between {slow + 1} and {fast - 1} units'),
+               ('Slow-selling products', counts['Slow-selling'], 'count', f'Sold {slow} or fewer units — consider promos or ordering less')]
+    return {'title': 'Fast/slow-selling products',
+            'headings': ['SKU', 'Product', 'Units sold', 'Revenue (PHP)', 'In stock now', 'Classification'],
+            'rows': result, 'widths': [90, 270, 80, 110, 80, 150], 'summary': summary,
             'notes': report_notes(start, end, category) + [
-                f'Demo thresholds: fast >= {fast} units; slow <= {slow} units; other counts normal.',
+                f'Fast-selling = {fast}+ units sold; slow-selling = {slow} or fewer; everything else is normal. Change the thresholds above.',
                 'Includes active products with zero sales and inactive products sold in the period.']}
 
 
@@ -97,15 +116,16 @@ def profit_loss(*, actor, start, end, category=None):
             'summary': summary}
 
 
-def stock_movements(*, actor, start, end, category=None):
+def stock_movements(*, actor, start, end, category=None, sort='oldest'):
     _authorize(actor, PURCHASE_ROLES, 'view_product')
     beginning = datetime.combine(start, time.min, tzinfo=MANILA)
     finish = datetime.combine(end, time.max, tzinfo=MANILA)
+    label, ordering = MOVEMENT_ORDER.get(sort, MOVEMENT_ORDER['oldest'])
     query = StockMovement.objects.filter(created_at__gte=beginning, created_at__lte=finish)
     if category:
         query = query.filter(product__category=category)
     rows = []
-    for entry in query.select_related('product', 'performed_by_auth', 'sale_item__sale', 'purchase_item__purchase').order_by('created_at', 'pk'):
+    for entry in query.select_related('product', 'performed_by_auth', 'sale_item__sale', 'purchase_item__purchase').order_by(*ordering):
         reference = 'Adjustment'
         if entry.sale_item_id:
             reference = entry.sale_item.sale.receipt_no
@@ -115,5 +135,5 @@ def stock_movements(*, actor, start, end, category=None):
             entry.product.name, entry.get_movement_type_display(), entry.quantity_change,
             entry.stock_after, reference, entry.performed_by_auth.get_username()])
     return {'title': 'Stock movement sheet', 'headings': ['Time (Manila)', 'SKU', 'Product', 'Type', 'Change', 'Balance after', 'Reference', 'Operator'],
-            'rows': rows, 'notes': report_notes(start, end, category) + ['Recorded stock movements in timestamp order.'],
+            'rows': rows, 'notes': report_notes(start, end, category) + [f'Recorded stock movements, sorted: {label.lower()}.'],
             'widths': [85, 65, 110, 60, 55, 55, 180, 110]}

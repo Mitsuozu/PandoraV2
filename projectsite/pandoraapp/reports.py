@@ -62,7 +62,15 @@ def sales_summary(*, actor, start, end, period):
         rows.append({'label': label, **values})
     totals = {key: sum((row[key] for row in rows), Decimal('0.00') if key == 'revenue' else 0)
               for key in ['transactions', 'units', 'revenue']}
-    return {'rows': rows, 'products': sorted(products.values(), key=lambda row: (row['name'], row['sku'])),
+    best = max(rows, key=lambda row: row['revenue'], default=None)
+    summary = [('Revenue', totals['revenue'], 'money', 'Money from completed sales'),
+               ('Completed sales', totals['transactions'], 'count', 'Receipts that were paid'),
+               ('Items sold', totals['units'], 'count', 'Total units that left the store'),
+               ('Average sale', totals['revenue'] / totals['transactions'] if totals['transactions'] else None,
+                'money', 'Revenue ÷ completed sales')]
+    return {'rows': rows, 'summary': summary, 'best': best,
+            # Best sellers first so the most important products are at the top.
+            'products': sorted(products.values(), key=lambda row: (-row['revenue'], row['name'], row['sku'])),
             'totals': totals, 'start': start, 'end': end, 'period': period,
             'generated': timezone.now().astimezone(MANILA).strftime('%Y-%m-%d %H:%M %Z')}
 

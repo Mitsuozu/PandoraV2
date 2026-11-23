@@ -6,9 +6,13 @@
 <aside id="rail">
   <a class="brand" href="{% url 'pandoraapp:home' %}">{% include "pandoraapp/icon.html" with name="brand" only %} PANDORA</a>
   <nav aria-label="Main navigation">
-    {% navigation rights as links %}{% for group,route,label,icon in links %}
-    {% ifchanged group %}<small>{{ group }}</small>{% endifchanged %}
-    <a href="{% url route %}" {% if request.resolver_match.view_name == route %}aria-current="page"{% endif %}>{% include "pandoraapp/icon.html" with name=icon only %}<span>{{ label }}</span></a>
+    {% navigation rights as links %}{% regroup links by 0 as groups %}{% for group in groups %}
+    <div class="nav-group">
+      <button type="button" class="nav-group-toggle" aria-expanded="true">{{ group.grouper }}{% include "pandoraapp/icon.html" with name="chevron" only %}</button>
+      <div class="nav-group-links">{% for _,route,label,icon in group.list %}
+        <a href="{% url route %}" {% if request.resolver_match.view_name == route %}aria-current="page"{% endif %}>{% include "pandoraapp/icon.html" with name=icon only %}<span>{{ label }}</span></a>
+      {% endfor %}</div>
+    </div>
     {% endfor %}
   </nav>
   <div class="rail-foot">
@@ -64,6 +68,13 @@ toggle.onclick = () => {
   sidebar(rail.inert);
   if (!rail.inert) rail.querySelector('.brand').focus();
 };
+// Labelled sidebar: only the current page's group starts open; the others fold behind their heading.
+rail.querySelectorAll('.nav-group').forEach((group, index) => {
+  const button = group.querySelector('.nav-group-toggle');
+  const fold = folded => { group.classList.toggle('folded', folded); button.setAttribute('aria-expanded', String(!folded)); };
+  fold(index > 0 && !group.querySelector('[aria-current]'));
+  button.onclick = () => fold(!group.classList.contains('folded'));
+});
 function closeRail() { sidebar(false); toggle.focus(); }
 document.querySelector('.rail-shade').onclick = closeRail;
 document.addEventListener('keydown', event => {

@@ -40,7 +40,8 @@ def report(request, kind):
     today = timezone.now().astimezone(MANILA).date()
     data = {'start': today.replace(day=1), 'end': today, 'fast': 10, 'slow': 2}
     data.update(request.GET.dict())
-    form_type = business_reports.PerformanceForm if kind == 'performance' else business_reports.PeriodForm
+    form_type = {'performance': business_reports.PerformanceForm, 'movements': business_reports.MovementForm}.get(
+        kind, business_reports.PeriodForm)
     form = form_type(data)
     result = None
     if form.is_valid():

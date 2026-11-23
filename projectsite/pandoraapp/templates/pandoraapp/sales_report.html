@@ -1,29 +1,35 @@
 {% extends 'pandoraapp/base.html' %}
 {% block content %}
 <h1>Sales summary</h1>
-<form method="get">
-  {{ form.as_p }}
-  <button>View summary</button>
-  <button name="format" value="pdf">Download PDF</button>
-</form>
+{% if report %}<p class="report-meta">{{ report.start|date:"M j" }} – {{ report.end|date:"M j, Y" }} · {{ report.period|title }} · PHP · Completed sales only · Generated {{ report.generated }}</p>{% endif %}
+<form method="get" class="report-form">{{ form.as_p }}<div class="report-actions"><button>View summary</button><button name="format" value="pdf">Download PDF</button></div></form>
 {% if report %}
-<p>{{ report.start }} to {{ report.end }} inclusive · {{ report.period|title }} · PHP</p>
-<p>Completed sales · Business dates Asia/Manila · Generated {{ report.generated }}</p>
-<p>Weekly periods run Monday–Sunday. Totals include only selected dates.</p>
+<div class="metrics report-summary">
+  {% for label,value,kind,hint in report.summary %}
+  <article>
+    <div class="metric-label">{{ label }}</div>
+    <strong class="metric-number">{% if value is None %}—{% elif kind == 'money' %}₱{{ value|floatformat:"2g" }}{% else %}{{ value }}{% endif %}</strong>
+    <small>{{ hint }}</small>
+  </article>
+  {% endfor %}
+</div>
+{% if report.best %}<p class="report-note lead">In this range the store made <b>₱{{ report.totals.revenue|floatformat:"2g" }}</b> from <b>{{ report.totals.transactions }}</b> completed sale{{ report.totals.transactions|pluralize }}.
+  Best {% if report.period == 'daily' %}day{% elif report.period == 'weekly' %}week{% else %}month{% endif %}: <b>{{ report.best.label }}</b> with ₱{{ report.best.revenue|floatformat:"2g" }}.</p>{% endif %}
+<h2>Sales by {% if report.period == 'daily' %}day{% elif report.period == 'weekly' %}week (Mon–Sun){% else %}month{% endif %}</h2>
 <table>
-  <thead><tr><th>Period</th><th>Transactions</th><th>Units</th><th>Revenue (PHP)</th></tr></thead>
+  <thead><tr><th>Period</th><th class="amount">Completed sales</th><th class="amount">Items sold</th><th class="amount">Revenue</th></tr></thead>
   <tbody>{% for row in report.rows %}
-    <tr><td>{{ row.label }}</td><td>{{ row.transactions }}</td><td>{{ row.units }}</td><td>{{ row.revenue|floatformat:2 }}</td></tr>
+    <tr{% if row == report.best %} class="total"{% endif %}><td>{{ row.label }}{% if row == report.best %} <span class="stock-tag ok">Best</span>{% endif %}</td><td class="amount">{{ row.transactions }}</td><td class="amount">{{ row.units }}</td><td class="amount">₱{{ row.revenue|floatformat:"2g" }}</td></tr>
   {% empty %}<tr><td colspan="4">No completed sales in this period.</td></tr>{% endfor %}</tbody>
-  <tfoot><tr><th>Total</th><td>{{ report.totals.transactions }}</td><td>{{ report.totals.units }}</td><td>{{ report.totals.revenue|floatformat:2 }}</td></tr></tfoot>
+  <tfoot><tr><th>Total</th><td class="amount">{{ report.totals.transactions }}</td><td class="amount">{{ report.totals.units }}</td><td class="amount">₱{{ report.totals.revenue|floatformat:"2g" }}</td></tr></tfoot>
 </table>
-<h2>Products sold</h2>
+<h2>Products sold <small>best sellers first</small></h2>
 <table>
-  <thead><tr><th>SKU</th><th>Product</th><th>Units sold</th><th>Revenue (PHP)</th></tr></thead>
+  <thead><tr><th>SKU</th><th>Product</th><th class="amount">Items sold</th><th class="amount">Revenue</th><th class="amount">Share of revenue</th></tr></thead>
   <tbody>{% for product in report.products %}
-    <tr><td>{{ product.sku }}</td><td>{{ product.name }}</td><td>{{ product.units }}</td><td>{{ product.revenue|floatformat:2 }}</td></tr>
-  {% empty %}<tr><td colspan="4">No products sold in this period.</td></tr>{% endfor %}</tbody>
-  <tfoot><tr><th colspan="2">Total</th><td>{{ report.totals.units }}</td><td>{{ report.totals.revenue|floatformat:2 }}</td></tr></tfoot>
+    <tr><td>{{ product.sku }}</td><td>{{ product.name }}</td><td class="amount">{{ product.units }}</td><td class="amount">₱{{ product.revenue|floatformat:"2g" }}</td><td class="amount">{% widthratio product.revenue report.totals.revenue 100 %}%</td></tr>
+  {% empty %}<tr><td colspan="5">No products sold in this period.</td></tr>{% endfor %}</tbody>
+  <tfoot><tr><th colspan="2">Total</th><td class="amount">{{ report.totals.units }}</td><td class="amount">₱{{ report.totals.revenue|floatformat:"2g" }}</td><td class="amount">100%</td></tr></tfoot>
 </table>
 {% endif %}
 {% endblock %}

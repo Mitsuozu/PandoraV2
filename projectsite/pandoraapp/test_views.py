@@ -180,6 +180,20 @@ class TransactionPagesTests(Fixtures, TestCase):
         self.assertContains(response, 'data-search="%s' % self.product.sku.lower())
         self.assertContains(response, 'Estimated total')
 
+    def test_product_search_ignores_case_and_matches_every_word(self):
+        name = self.product.name
+        for query in [name.upper(), name.lower(), f'{self.product.sku.lower()} {name.split()[0].upper()}']:
+            response = self.client.get(self.url('products'), {'q': query})
+            self.assertEqual(response.context['page'].paginator.count, 1, query)
+        response = self.client.get(self.url('products'), {'q': name + ' nomatchword'})
+        self.assertEqual(response.context['page'].paginator.count, 0)
+
+    def test_purchase_form_shows_cost_and_prefills_reorder_lines(self):
+        self.assertNotContains(self.client.get(self.url('sale_create')), 'data-cost')
+        response = self.client.get(self.url('purchase_create'), {'product': [self.product.pk, 'x']})
+        self.assertContains(response, 'data-cost=')
+        self.assertEqual(response.context['lines'].forms[0].initial['product'], self.product.pk)
+
     def test_dashboard_compares_sales_with_previous_period(self):
         from datetime import timedelta
         from django.utils import timezone

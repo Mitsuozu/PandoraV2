@@ -20,6 +20,7 @@ class SaleHeaderForm(forms.Form):
 
 class ProductSelect(forms.Select):
     """Adds price, stock and search text to each option for the line search and running total."""
+    show_cost = False
 
     def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
         option = super().create_option(name, value, label, selected, index, subindex, attrs)
@@ -28,10 +29,17 @@ class ProductSelect(forms.Select):
             option['attrs'].update({
                 'data-price': str(product.selling_price),
                 'data-stock': str(product.current_stock),
+                'data-reorder': str(product.reorder_level),
                 'data-search': ' '.join(filter(None, [product.sku, product.name, product.brand,
                                                       product.category.name])).lower(),
             })
+            if self.show_cost:
+                option['attrs']['data-cost'] = f'{product.cost_price:.2f}'
         return option
+
+
+class PurchaseProductSelect(ProductSelect):
+    show_cost = True  # buyers need the last cost; the sale form must never expose it
 
 
 class ProductChoiceField(forms.ModelChoiceField):
@@ -47,7 +55,24 @@ class SaleLineForm(forms.Form):
     quantity = forms.IntegerField(min_value=1, max_value=MAX_QUANTITY)
 
 
+def stock_label(product):
+    if product.current_stock == 0:
+        return ' · OUT OF STOCK'
+    if product.current_stock <= product.reorder_level:
+        return f' · LOW STOCK ({product.current_stock} left)'
+    return ''
+
+
+class PurchaseProductField(ProductChoiceField):
+    widget = PurchaseProductSelect
+
+    def label_from_instance(self, obj):
+        return super().label_from_instance(obj) + stock_label(obj)
+
+
 class PurchaseLineForm(SaleLineForm):
+    product = PurchaseProductField(
+        queryset=Product.objects.filter(is_active=True).select_related('category').order_by('name'))
     unit_cost = forms.DecimalField(max_digits=10, decimal_places=2, min_value=Decimal('0'))
 
 

@@ -6,17 +6,18 @@
 {% if report %}
 {% if report.summary %}
 <div class="metrics report-summary">
-  {% for label,value,kind in report.summary %}
+  {% for item in report.summary %}{% with label=item.0 value=item.1 kind=item.2 %}
   <article{% if value < 0 %} class="loss"{% endif %}>
     <div class="metric-label">{{ label }}</div>
-    <strong class="metric-number">{% if value is None %}—{% elif kind == 'percent' %}{{ value }}%{% else %}₱{{ value|floatformat:"2g" }}{% endif %}</strong>
-  </article>
+    <strong class="metric-number">{% if value is None %}—{% elif kind == 'percent' %}{{ value }}%{% elif kind == 'count' %}{{ value }}{% else %}₱{{ value|floatformat:"2g" }}{% endif %}</strong>
+    {% if item.3 %}<small>{{ item.3 }}</small>{% endif %}
+  </article>{% endwith %}
   {% endfor %}
 </div>
 {% endif %}
 {% for note in report.notes|slice:"3:" %}<p class="report-note">{{ note }}</p>{% endfor %}
 <table class="report-{{ kind }}"><thead><tr>{% for heading in report.headings %}<th>{{ heading }}</th>{% endfor %}</tr></thead>
-<tbody>{% for row in report.rows %}<tr{% if row.0 == 'Gross profit' or row.0 == 'Operating profit/loss' %} class="total"{% endif %}>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+<tbody>{% for row in report.rows %}<tr{% if row.0 == 'Gross profit' or row.0 == 'Operating profit/loss' %} class="total"{% endif %}>{% for cell in row %}<td>{% if cell == 'Fast-selling' %}<span class="stock-tag ok">{{ cell }}</span>{% elif cell == 'Slow-selling' %}<span class="stock-tag warn">{{ cell }}</span>{% else %}{{ cell }}{% endif %}</td>{% endfor %}</tr>
 {% empty %}<tr><td colspan="8">No records match the selected filters.</td></tr>{% endfor %}</tbody></table>
 {% endif %}
 {% endblock %}

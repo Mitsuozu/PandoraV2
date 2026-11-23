@@ -7,7 +7,8 @@ from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.db import transaction
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, F, Q, Sum, Value
+from django.db.models.functions import Concat, Lower
 from django.http import HttpResponseBadRequest
 from django.http import HttpResponse
 from django.utils import timezone
@@ -209,7 +210,17 @@ def create(request, kind):
     if kind == 'purchase' and request.GET.get('supplier', '').isdigit():
         initial['supplier'] = int(request.GET['supplier'])
     header = header_class(data, initial=initial)
-    lines = lines_class(data, prefix='items')
+    line_initial = []
+    restock = []
+    if kind == 'purchase':
+        # ?product=1&product=2 (from the reorder report) starts a line per product, topped up to twice its reorder level.
+        ids = [int(pk) for pk in request.GET.getlist('product')[:50] if pk.isdigit()]
+        for product in Product.objects.filter(pk__in=ids, is_active=True).order_by('name'):
+            line_initial.append({'product': product.pk, 'unit_cost': round(product.cost_price, 2),
+                                 'quantity': max(product.reorder_level * 2 - product.current_stock, 1)})
+        restock = list(products_needing_reorder().order_by('current_stock', 'name')
+                       .values('pk', 'name', 'current_stock', 'reorder_level', 'preferred_supplier_id'))
+    lines = lines_class(data, prefix='items', initial=line_initial or None)
     header_valid = header.is_valid() if data is not None else False
     lines_valid = lines.is_valid() if data is not None else False
     if header_valid and lines_valid:
@@ -236,7 +247,7 @@ def create(request, kind):
         except services.StockError as exc:
             header.add_error(None, exc)
     return render(request, 'pandoraapp/create.html',
-                  {'kind': kind, 'header': header, 'lines': lines})
+                  {'kind': kind, 'header': header, 'lines': lines, 'restock': restock})
 
 
 def render_detail(request, kind, pk, *, action_form=None, cancel_form=None):
@@ -322,7 +333,8 @@ def cancel(request, kind, pk):
 @login_required(login_url='/login/')
 @require_GET
 def reorder(request):
-    return render(request, 'pandoraapp/reorder.html', {'rows': reorder_report(actor=request.user)})
+    return render(request, 'pandoraapp/reorder.html', {'rows': reorder_report(actor=request.user),
+                                                       'can_order': access_for(request.user)['purchase_create_access']})
 
 
 @login_required(login_url='/login/')
@@ -346,9 +358,13 @@ def products(request):
     if form.is_valid():
         filters = form.cleaned_data
         query = filters['q']
+        # Compare lowercased text so case never matters, even on case-sensitive (binary) MySQL collations.
+        # Every word must match somewhere, so "samsung 1tb" finds the 990 Pro 1TB.
         if query:
-            rows = rows.filter(Q(name__icontains=query) | Q(sku__icontains=query)
-                               | Q(brand__icontains=query) | Q(category__name__icontains=query))
+            rows = rows.annotate(search_text=Lower(Concat('sku', Value(' '), 'name', Value(' '), 'brand',
+                                                          Value(' '), 'category__name')))
+        for word in query.lower().split():
+            rows = rows.filter(search_text__contains=word)
         if filters['category']:
             rows = rows.filter(category=filters['category'])
         if filters['brand']:

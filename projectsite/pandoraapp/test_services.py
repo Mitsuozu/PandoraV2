@@ -350,7 +350,7 @@ class StockServicesTests(Fixtures, TestCase):
 
     def test_reorder_report_excludes_financial_fields(self):
         report=reorder_report(actor=self.admin)
-        self.assertEqual(set(report[0]),{'id','sku','name','current_stock','reorder_level','preferred_supplier__name'})
+        self.assertEqual(set(report[0]),{'id','sku','name','current_stock','reorder_level','preferred_supplier_id','preferred_supplier__name'})
 
     def test_nested_transaction_leaves_deadlock_retry_to_outer_owner(self):
         from django.db import OperationalError

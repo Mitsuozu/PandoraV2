@@ -159,9 +159,15 @@ small, th { color: var(--ink-2); }
 #rail .brand .ui-icon { color: var(--accent); }
 #rail .brand { margin-bottom: 18px; font-size: 0; }
 #rail nav { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; }
-/* Group names stay readable for screen readers but draw as a short divider */
-#rail nav small { display: block; width: 22px; height: 1px; margin: 10px 0; overflow: hidden; color: transparent; background: var(--rail-line); }
-#rail nav small:first-child { display: none; }
+/* Narrow rail: group headings draw as a short divider and every icon stays visible */
+.nav-group, .nav-group-links { display: flex; flex-direction: column; align-items: inherit; gap: 2px; width: 100%; }
+#rail nav { align-items: center; }
+.nav-group-toggle {
+  display: block; width: 22px; height: 1px; min-height: 0; margin: 10px auto; padding: 0; overflow: hidden; border: 0; border-radius: 0;
+  color: transparent; background: var(--rail-line); box-shadow: none; pointer-events: none;
+}
+.nav-group:first-child .nav-group-toggle { display: none; }
+.nav-group-toggle .ui-icon { display: none; }
 #rail nav a {
   position: relative; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px;
   color: var(--rail-ink); text-decoration: none; font-size: 13px;
@@ -193,7 +199,17 @@ small, th { color: var(--ink-2); }
 .rail-wide #rail { width: var(--drawer-width); align-items: stretch; padding-inline: 12px; }
 .rail-wide #rail .brand { font-size: 13px; margin: 0 0 16px 6px; }
 .rail-wide #rail nav { align-items: stretch; }
-.rail-wide #rail nav small, .rail-wide #rail nav small:first-child { display: block; width: auto; height: auto; margin: 14px 10px 4px; color: var(--rail-muted); background: none; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+/* Labelled rail: scrolls when taller than the screen; groups fold open/closed from their heading */
+.rail-wide #rail { max-height: 100svh; overflow-y: auto; overscroll-behavior: contain; }
+.rail-wide .nav-group-toggle, .rail-wide .nav-group:first-child .nav-group-toggle {
+  display: flex; align-items: center; justify-content: space-between; width: auto; height: auto; margin: 10px 0 2px; padding: 6px 10px;
+  border-radius: 8px; color: var(--rail-muted); background: none; font-size: 11px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase;
+  cursor: pointer; pointer-events: auto;
+}
+.rail-wide .nav-group-toggle:hover { color: var(--rail-ink); background: var(--raised); box-shadow: none; }
+.rail-wide .nav-group-toggle .ui-icon { display: block; width: 14px; height: 14px; transition: rotate .2s; }
+.rail-wide .nav-group.folded .nav-group-toggle .ui-icon { rotate: -90deg; }
+.rail-wide .nav-group.folded .nav-group-links { display: none; }
 .rail-wide #rail nav a { display: flex; justify-content: flex-start; gap: 12px; width: auto; padding: 0 12px; }
 .rail-wide #rail nav a span { position: static; translate: none; padding: 0; border: 0; background: none; color: inherit; opacity: 1; white-space: nowrap; min-width: 0; overflow: hidden; }
 .rail-wide .rail-foot { align-items: stretch; }
@@ -512,6 +528,10 @@ main form p:first-of-type { margin-top: 0; }
 .danger-zone { border-color: rgba(248, 113, 113, .35); }
 button.danger { color: var(--white); background: linear-gradient(160deg, #DC2626, #991B1B); }
 .row-actions { display: flex; gap: 12px; align-items: center; justify-content: flex-end; }
+/* A flex <td> stops being a table cell and breaks the row's borders; keep cells as cells. */
+td.row-actions { display: table-cell; text-align: right; }
+td.row-actions > * + * { margin-left: 12px; }
+.button-link.small { padding: 5px 14px; border-radius: 999px; font-size: 12px; color: var(--on-accent); }
 .row-actions form { display: inline; margin: 0; padding: 0; border: 0; background: none; box-shadow: none; }
 button.link-button { padding: 0; background: none; color: var(--red); font-weight: 500; text-decoration: underline; border-radius: 0; box-shadow: none; }
 
@@ -550,6 +570,10 @@ main .line-header p { flex: 1 1 180px; margin: 0; }
 .line-actions { display: flex; gap: 10px; }
 .line-info { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; }
 .line-info.warn { color: var(--amber); font-weight: 500; }
+.line-count { display: block; margin-top: 4px; color: var(--ink-2); font-size: 12px; }
+.restock { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 16px; }
+.restock span { color: var(--ink-2); font-size: 13px; }
+.restock button { cursor: pointer; border: 0; box-shadow: none; padding: 5px 12px; white-space: normal; text-align: left; }
 .sale-total { display: flex; align-items: baseline; gap: 10px; margin-block: 4px 16px; font-size: 15px; }
 .sale-total b { font-size: 24px; font-weight: 500; letter-spacing: -.02em; }
 .sale-total small { color: var(--ink-2); }
@@ -576,7 +600,8 @@ main .report-form p { flex: 1 1 160px; margin: 0; }
 .metrics .loss .metric-number { color: var(--red); }
 .report-summary { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
 .report-profit :is(th, td):last-child { text-align: right; font-variant-numeric: tabular-nums; }
-.report-profit tr.total td { font-weight: 600; color: var(--ink); }
+.report-profit tr.total td, tr.total td { font-weight: 600; color: var(--ink); }
+.report-note.lead { font-size: 14px; color: var(--ink); }
 
 /* ---------- Sign-in: a centred card under the beam ---------- */
 .signin { position: relative; min-height: 100svh; display: grid; place-items: center; padding: 16px; overflow: hidden;
@@ -599,7 +624,8 @@ main .report-form p { flex: 1 1 160px; margin: 0; }
 @media (max-width: 800px) {
   .frame { margin: 0; min-height: 100svh; border: 0; border-radius: 0; }
   #rail {
-    position: fixed; inset: 0 auto 0 0; width: min(var(--drawer-width), 80vw); min-height: 0; align-items: stretch; padding: 16px 12px; overflow-y: auto;
+    position: fixed; inset: 0 auto auto 0; width: min(var(--drawer-width), 80vw); height: 100dvh; min-height: 0; max-height: none; align-items: stretch; padding: 16px 12px; overflow-y: auto;
+    overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
     background: var(--rail-bg); border-radius: 0; transform: translateX(-100%); transition: transform .2s ease;
   }
   .open #rail { transform: none; }
