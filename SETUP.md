@@ -16,7 +16,7 @@ These steps install PandoraV2 on a new Windows computer and, if you want, copy t
 git clone https://github.com/Mitsuozu/PandoraV2.git
 cd PandoraV2
 python -m venv .venv
-.\.venv\Scripts\pip install -r projectsite\requirements.txt
+.\.venv\bin\pip install -r projectsite\requirements.txt
 ```
 
 ```powershell
@@ -60,10 +60,10 @@ This brings over products, suppliers, purchases, sales, expenses, user accounts 
 
 ```powershell
 cd projectsite
-..\.venv\Scripts\python manage.py migrate
-..\.venv\Scripts\python manage.py configure_pandora_roles
-..\.venv\Scripts\python manage.py createsuperuser
-..\.venv\Scripts\python manage.py create_demo_accounts
+..\.venv\bin\python manage.py migrate
+..\.venv\bin\python manage.py configure_pandora_roles
+..\.venv\bin\python manage.py createsuperuser
+..\.venv\bin\python manage.py create_demo_accounts
 ```
 
 `create_demo_accounts` creates `admin_demo`, `inventory_demo` and `cashier_demo`, and asks you to type a password for each.
@@ -71,7 +71,7 @@ cd projectsite
 To fill the empty store with fake demo data (a computer store with two years of purchases, sales and expenses, all tagged `DEMO-`):
 
 ```powershell
-..\.venv\Scripts\python manage.py seed_demo_data
+..\.venv\bin\python manage.py seed_demo_data
 ```
 
 It only runs once per database and refuses to run when `PANDORA_DEBUG=False`. Use `--days 365` for less history, or `--user <name>` to record it as someone other than the first superuser.
@@ -80,9 +80,9 @@ It only runs once per database and refuses to run when `PANDORA_DEBUG=False`. Us
 
 ```powershell
 cd projectsite
-..\.venv\Scripts\python manage.py check
-..\.venv\Scripts\python manage.py test
-..\.venv\Scripts\python manage.py runserver
+..\.venv\bin\python manage.py check
+..\.venv\bin\python manage.py test
+..\.venv\bin\python manage.py runserver
 ```
 
 Open http://127.0.0.1:8000 and sign in. The REST API is at http://127.0.0.1:8000/api/. The map and address lookup use OpenStreetMap, so they need an internet connection (no key required).
@@ -104,21 +104,21 @@ PANDORA_GITHUB_CLIENT_ID=...
 PANDORA_GITHUB_SECRET=...
 ```
 
-4. Run `..\.venv\Scripts\python manage.py migrate` (also needed after importing an export, for the sign-in tables) and restart the server.
+4. Run `..\.venv\bin\python manage.py migrate` (also needed after importing an export, for the sign-in tables) and restart the server.
 
 ## 6. Set up daily backups (optional)
 
 The scheduled backup task doesn't come with the code. Create it on the new computer, replacing `C:\path\to\Pandora` with where you cloned the repository:
 
 ```powershell
-schtasks /Create /TN "Pandora Daily Database Backup" /SC DAILY /ST 02:00 /TR "\"C:\path\to\Pandora\.venv\Scripts\python.exe\" -B \"C:\path\to\Pandora\projectsite\manage.py\" backup_pandora"
+schtasks /Create /TN "Pandora Daily Database Backup" /SC DAILY /ST 02:00 /TR "\"C:\path\to\Pandora\.venv\bin\python.exe\" -B \"C:\path\to\Pandora\projectsite\manage.py\" backup_pandora"
 ```
 
 Backups are saved in `%LOCALAPPDATA%\Pandora\Backups`, and the last seven days are kept. With MySQL they're encrypted `.dpapi` files; with SQLite they're `.sqlite3` copies (not encrypted, so keep that folder private). Admins can also click **Back up now** in **Settings**. To make one from the terminal and check that it restores correctly:
 
 ```powershell
 cd projectsite
-..\.venv\Scripts\python -B manage.py backup_pandora --verify-restore
+..\.venv\bin\python -B manage.py backup_pandora --verify-restore
 ```
 
 ## 7. Restore from a backup
@@ -129,13 +129,13 @@ See which backups you have (newest first):
 
 ```powershell
 cd projectsite
-..\.venv\Scripts\python -B manage.py restore_pandora
+..\.venv\bin\python -B manage.py restore_pandora
 ```
 
 Restore one by date, by file name, or `latest`. You'll be asked to type the database name to confirm:
 
 ```powershell
-..\.venv\Scripts\python -B manage.py restore_pandora latest
+..\.venv\bin\python -B manage.py restore_pandora latest
 ```
 
 What happens:
