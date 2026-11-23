@@ -1,30 +1,39 @@
-# Setting up Pandora on another computer
+# Setting up PandoraV2 on another computer
 
-These steps install Pandora on a new Windows computer and, if you want, copy the store data from an existing one. Run commands in **PowerShell**.
+These steps install PandoraV2 on a new Windows computer and, if you want, copy the store data from an existing one. Run commands in **PowerShell**.
 
 > **Backups don't move.** The daily `.dpapi` backups are encrypted with the Windows account that made them and can't be opened on another computer. To move data, use a SQL export (step 4A).
 
 ## 1. Install the software
 
-- **Python 3.14**: during install, tick *Add python.exe to PATH*.
-- **MySQL Server 8.4**: write down the `root` password you choose.
+- **Python 3.12 or newer** (Django 6.1 needs it): during install, tick *Add python.exe to PATH*.
+- **MySQL Server 8.4 or newer**: write down the `root` password you choose. (Not needed if you use SQLite, see step 2.)
 - **Git**
 
 ## 2. Get the code
 
 ```powershell
-git clone https://github.com/Kenzo-gg/Pandora.git
-cd Pandora
+git clone https://github.com/Mitsuozu/PandoraV2.git
+cd PandoraV2
 python -m venv .venv
 .\.venv\Scripts\pip install -r projectsite\requirements.txt
 ```
 
-Copy `projectsite\.env.example` to `projectsite\.env` and enter this computer's MySQL password after `PANDORA_DB_PASSWORD=`. The `.env` file is ignored by git, so the password stays on this computer.
+```powershell
+Copy-Item projectsite\.env.example projectsite\.env
+```
 
-## 3. Create the database
+Then open `projectsite\.env` and pick a database:
+
+- **MySQL:** put `#` in front of the `PANDORA_DB_ENGINE=sqlite` line (it is switched on in the example file) and enter this computer's MySQL password after `PANDORA_DB_PASSWORD=`.
+- **SQLite:** leave `PANDORA_DB_ENGINE=sqlite` as it is. The data goes in `projectsite\db.sqlite3`; skip step 3 and step 4A (both are MySQL only).
+
+The `.env` file is ignored by git, so the password stays on this computer.
+
+## 3. Create the database (MySQL only)
 
 ```powershell
-& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -u root -p -e "CREATE DATABASE pandoradb CHARACTER SET utf8mb4"
+& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -u root -p -e "CREATE DATABASE pandorav2db CHARACTER SET utf8mb4"
 ```
 
 ## 4. Add data: choose A or B
@@ -34,13 +43,13 @@ Copy `projectsite\.env.example` to `projectsite\.env` and enter this computer's 
 On the **old** computer, from the `projectsite` folder:
 
 ```powershell
-& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqldump.exe" -u root -p --single-transaction --no-tablespaces pandoradb --result-file=pandora-export.sql
+& "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysqldump.exe" -u root -p --single-transaction --no-tablespaces pandorav2db --result-file=pandora-export.sql
 ```
 
 Copy `pandora-export.sql` to the new computer (for example on a USB drive), then on the **new** computer:
 
 ```powershell
-Get-Content pandora-export.sql -Raw | & "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -u root -p pandoradb
+Get-Content pandora-export.sql -Raw | & "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -u root -p pandorav2db
 ```
 
 This brings over products, suppliers, purchases, sales, expenses, user accounts and their roles. People sign in with the same usernames and passwords as before.
@@ -59,15 +68,24 @@ cd projectsite
 
 `create_demo_accounts` creates `admin_demo`, `inventory_demo` and `cashier_demo`, and asks you to type a password for each.
 
+To fill the empty store with fake demo data (a computer store with two years of purchases, sales and expenses, all tagged `DEMO-`):
+
+```powershell
+..\.venv\Scripts\python manage.py seed_demo_data
+```
+
+It only runs once per database and refuses to run when `PANDORA_DEBUG=False`. Use `--days 365` for less history, or `--user <name>` to record it as someone other than the first superuser.
+
 ## 5. Check it works
 
 ```powershell
 cd projectsite
 ..\.venv\Scripts\python manage.py check
+..\.venv\Scripts\python manage.py test
 ..\.venv\Scripts\python manage.py runserver
 ```
 
-Open http://127.0.0.1:8000 and sign in.
+Open http://127.0.0.1:8000 and sign in. The REST API is at http://127.0.0.1:8000/api/. The map and address lookup use OpenStreetMap, so they need an internet connection (no key required).
 
 ## Google and GitHub sign-in (optional)
 
